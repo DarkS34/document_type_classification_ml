@@ -177,65 +177,36 @@ def create_classifier(config, model_path=None, lda_path=None, scaler_path=None):
     )
 
 
-def train_classifier(classifier_name, config, training_images, training_labels):
-    """Trains a specific classifier"""
-    print(f"\033[92m[TRAINING ...]\033[0m Classifier {classifier_name}", flush=True, end="")
-    
-    # Process images according to configuration
-    processed_images, processed_labels = process_images(
-        training_images, training_labels, 
-        config['use_scanner'], config['to_gray']
-    )
-    
-    # Create and train classifier
-    classifier = create_classifier(config)
-    classifier.train(processed_images, processed_labels)
-    
-    # Save models
-    model_path = f"./models/model_{classifier_name}.joblib"
-    scaler_path = f"./models/scaler_{classifier_name}.joblib"
-    dump(classifier.model, model_path)
-    dump(classifier.scaler, scaler_path)
-    
-    if config['use_lda']:
-        lda_path = f"./models/model_{classifier_name}_lda.joblib"
-        dump(classifier.lda, lda_path)
-    
-    print(f"\r\033[92m[TRAINING COMPLETED]\033[0m Classifier {classifier_name}", flush=True)
-
-
-def evaluate_classifier(classifier_name, config, test_images, test_labels):
-    """Evaluates a specific classifier"""
-    print(f"\033[92m[EVALUATING]\033[0m Classifier {classifier_name}")
-    
-    # Process test images according to configuration
-    processed_images, processed_labels = process_images(
-        test_images, test_labels,
-        config['use_scanner'], config['to_gray']
-    )
-    
-    # Load and evaluate classifier
-    model_path = f"./models/model_{classifier_name}.joblib"
-    scaler_path = f"./models/scaler_{classifier_name}.joblib"
-    lda_path = f"./models/model_{classifier_name}_lda.joblib" if config['use_lda'] else None
-    
-    classifier = create_classifier(config, model_path, lda_path, scaler_path)
-    return classifier.evaluate(processed_images, processed_labels)
-
-
-def ensure_models_directory():
-    """Ensures models directory exists"""
-    if not os.path.exists("./models/"):
-        os.makedirs("./models/")
-
-
 def train_all_classifiers():
     """Trains all defined classifiers"""
-    ensure_models_directory()
+    if not os.path.exists("./models/"):
+        os.makedirs("./models/")
     training_images, training_labels = load_images_from_folder(TRAIN_DIR)
     
     for classifier_name, config in CLASSIFIER_CONFIGS.items():
-        train_classifier(classifier_name, config, training_images, training_labels)
+        print(f"\033[92m[TRAINING ...]\033[0m Classifier {classifier_name}", flush=True, end="")
+        
+        # Process images according to configuration
+        processed_images, processed_labels = process_images(
+            training_images, training_labels, 
+            config['use_scanner'], config['to_gray']
+        )
+        
+        # Create and train classifier
+        classifier = create_classifier(config)
+        classifier.train(processed_images, processed_labels)
+        
+        # Save models
+        model_path = f"./models/model_{classifier_name}.joblib"
+        scaler_path = f"./models/scaler_{classifier_name}.joblib"
+        dump(classifier.model, model_path)
+        dump(classifier.scaler, scaler_path)
+        
+        if config['use_lda']:
+            lda_path = f"./models/model_{classifier_name}_lda.joblib"
+            dump(classifier.lda, lda_path)
+        
+        print(f"\r\033[92m[TRAINING COMPLETED]\033[0m Classifier {classifier_name}", flush=True)
 
 
 def evaluate_all_classifiers():
@@ -244,21 +215,25 @@ def evaluate_all_classifiers():
     results = {}
     
     for classifier_name, config in CLASSIFIER_CONFIGS.items():
-        accuracy = evaluate_classifier(classifier_name, config, test_images, test_labels)
+        print(f"\033[92m[EVALUATING]\033[0m Classifier {classifier_name}")
+        
+        # Process test images according to configuration
+        processed_images, processed_labels = process_images(
+            test_images, test_labels,
+            config['use_scanner'], config['to_gray']
+        )
+        
+        # Load and evaluate classifier
+        model_path = f"./models/model_{classifier_name}.joblib"
+        scaler_path = f"./models/scaler_{classifier_name}.joblib"
+        lda_path = f"./models/model_{classifier_name}_lda.joblib" if config['use_lda'] else None
+        
+        classifier = create_classifier(config, model_path, lda_path, scaler_path)
+        accuracy = classifier.evaluate(processed_images, processed_labels)
+        
         results[classifier_name] = accuracy
     
     return results
-
-
-def predict_single_image(image_path):
-    """Predicts the class of a single image using the best classifier"""
-    best_config = CLASSIFIER_CONFIGS[f'C{BEST_CLASSIFIER}']
-    model_path = f"./models/model_C{BEST_CLASSIFIER}.joblib"
-    scaler_path = f"./models/scaler_C{BEST_CLASSIFIER}.joblib"
-    lda_path = f"./models/model_C{BEST_CLASSIFIER}_lda.joblib" if best_config['use_lda'] else None
-    
-    classifier = create_classifier(best_config, model_path, lda_path, scaler_path)
-    return classifier.predict(image_path)
 
 
 if __name__ == "__main__":
@@ -281,8 +256,14 @@ if __name__ == "__main__":
     elif args.path:
         if os.path.exists(args.path):
             try:
-                prediction = predict_single_image(args.path)
-                print(f"Prediction: {prediction}")
+                best_config = CLASSIFIER_CONFIGS[f'C{BEST_CLASSIFIER}']
+                model_path = f"./models/model_C{BEST_CLASSIFIER}.joblib"
+                scaler_path = f"./models/scaler_C{BEST_CLASSIFIER}.joblib"
+                lda_path = f"./models/model_C{BEST_CLASSIFIER}_lda.joblib" if best_config['use_lda'] else None
+                
+                best_classifier = create_classifier(best_config, model_path, lda_path, scaler_path)
+                
+                print(f"Prediction: {best_classifier.predict(args.path)}")
             except Exception as e:
                 print(f"Error processing image: {e}")
         else:

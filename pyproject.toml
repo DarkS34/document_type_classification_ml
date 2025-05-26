@@ -7,10 +7,6 @@ requires-python = ">=3.12"
 dependencies = [
     "dump>=0.0.5",
     "joblib>=1.4.2",
-    "main-functions>=0.0.3",
-    "matplotlib>=3.10.1",
     "opencv-python>=4.11.0.86",
-    "pandas>=2.2.3",
     "scikit-learn>=1.6.1",
-    "svc>=0.1",
 ]
